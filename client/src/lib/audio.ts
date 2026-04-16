@@ -421,23 +421,23 @@ export function playSectionEnter() {
   osc.frequency.setValueAtTime(400, now);
   osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.04, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+  gain.gain.setValueAtTime(0.1, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
-  osc.stop(now + 0.15);
+  osc.stop(now + 0.18);
 
-  // Tiny click
-  const clickLen = 0.008;
+  // Click
+  const clickLen = 0.01;
   const buf = ctx.createBuffer(1, ctx.sampleRate * clickLen, ctx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) {
-    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 8);
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 6);
   }
   const src = ctx.createBufferSource();
   src.buffer = buf;
   const cGain = ctx.createGain();
-  cGain.gain.value = 0.03;
+  cGain.gain.value = 0.08;
   src.connect(cGain).connect(ctx.destination);
   src.start(now);
 }
@@ -454,8 +454,8 @@ export function playHackGlitch() {
     osc.type = "square";
     osc.frequency.value = 200 + Math.random() * 2000;
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.03, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    gain.gain.setValueAtTime(0.08, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
 
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
@@ -481,8 +481,8 @@ export function playHackGlitch() {
   lp.type = "lowpass";
   lp.frequency.value = 2000;
   const sGain = ctx.createGain();
-  sGain.gain.setValueAtTime(0.04, now);
-  sGain.gain.linearRampToValueAtTime(0.01, now + staticLen);
+  sGain.gain.setValueAtTime(0.1, now);
+  sGain.gain.linearRampToValueAtTime(0.02, now + staticLen);
   src.connect(lp).connect(sGain).connect(ctx.destination);
   src.start(now);
 }
@@ -497,23 +497,23 @@ export function playStampHit() {
   osc.frequency.setValueAtTime(120, now);
   osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.1, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  gain.gain.setValueAtTime(0.18, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
-  osc.stop(now + 0.25);
+  osc.stop(now + 0.3);
 
   // Paper slap noise
-  const len = 0.03;
+  const len = 0.04;
   const buf = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) {
-    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4);
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
   }
   const src = ctx.createBufferSource();
   src.buffer = buf;
   const nGain = ctx.createGain();
-  nGain.gain.value = 0.08;
+  nGain.gain.value = 0.15;
   src.connect(nGain).connect(ctx.destination);
   src.start(now);
 }
