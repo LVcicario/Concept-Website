@@ -425,7 +425,7 @@ export function startSiteAmbient() {
 
   siteAmbientGain = ctx.createGain();
   siteAmbientGain.gain.setValueAtTime(0, ctx.currentTime);
-  siteAmbientGain.gain.linearRampToValueAtTime(0.09, ctx.currentTime + 3);
+  siteAmbientGain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 3);
   siteAmbientGain.connect(ctx.destination);
 
   // Cm7 chord — very low, filtered
@@ -493,7 +493,7 @@ export function startSiteAmbient() {
 /** Fade out and stop site ambient */
 export function stopSiteAmbient() {
   if (siteAmbientGain && audioCtx) {
-    siteAmbientGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.5);
+    siteAmbientGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
     setTimeout(() => {
       siteAmbientNodes.forEach((n) => { try { n.stop(); } catch {} });
       siteAmbientNodes = [];
@@ -508,7 +508,7 @@ export function stopSiteAmbient() {
 export function setSiteAmbientMuted(muted: boolean) {
   if (siteAmbientGain && audioCtx) {
     siteAmbientGain.gain.linearRampToValueAtTime(
-      muted ? 0 : 0.09,
+      muted ? 0 : 0.14,
       audioCtx.currentTime + 0.5,
     );
   }

@@ -19,8 +19,8 @@ export function startSiren() {
   if (sirenGain) return;
 
   sirenGain = ctx.createGain();
-  sirenGain.gain.setValueAtTime(0, ctx.currentTime);
-  sirenGain.gain.linearRampToValueAtTime(0.07, ctx.currentTime + 3);
+  sirenGain.gain.setValueAtTime(0.05, ctx.currentTime);
+  sirenGain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 1.5);
   sirenGain.connect(ctx.destination);
 
   // === Layer 1: Main siren — slow sweep 200↔500Hz ===
@@ -130,6 +130,21 @@ export function playImpact() {
   nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
   src.connect(lp).connect(nGain).connect(ctx.destination);
   src.start(now);
+
+  // 30% chance: delayed echo (boom bouncing off terrain)
+  if (Math.random() < 0.3) {
+    const echoDelay = 0.2 + Math.random() * 0.1;
+    const echoOsc = ctx.createOscillator();
+    echoOsc.type = "sine";
+    echoOsc.frequency.setValueAtTime(50, now + echoDelay);
+    echoOsc.frequency.exponentialRampToValueAtTime(18, now + echoDelay + 0.3);
+    const echoGain = ctx.createGain();
+    echoGain.gain.setValueAtTime(0.05, now + echoDelay);
+    echoGain.gain.exponentialRampToValueAtTime(0.001, now + echoDelay + 0.4);
+    echoOsc.connect(echoGain).connect(ctx.destination);
+    echoOsc.start(now + echoDelay);
+    echoOsc.stop(now + echoDelay + 0.5);
+  }
 }
 
 /** Radar beep */
@@ -140,11 +155,11 @@ export function playRadarBeep() {
   osc.type = "sine";
   osc.frequency.value = 1000;
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.025, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+  gain.gain.setValueAtTime(0.045, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
-  osc.stop(now + 0.12);
+  osc.stop(now + 0.15);
 }
 
 /** Launch alarm — rapid beep-beep */

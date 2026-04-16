@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { LaunchTerminal } from "./LaunchTerminal";
 import { WarMap } from "./WarMap";
 import { Aftermath } from "./Aftermath";
 import { startSiren, stopSiren, killAllAudio } from "./useNuclearAudio";
 import { useEasterEggStore } from "../../stores/easterEggStore";
+import { stopSiteAmbient } from "../../lib/audio";
 
 type Act = "launch" | "war" | "aftermath" | "done";
 
@@ -11,14 +12,13 @@ export function NuclearSequence() {
   const [act, setAct] = useState<Act>("launch");
   const setNuclearDone = useEasterEggStore((s) => s.setNuclearDone);
 
-  // Start siren when component mounts
-  useState(() => {
+  // Kill site ambient and start siren immediately
+  useEffect(() => {
+    stopSiteAmbient();
     startSiren();
-  });
-
-  const handleLaunchComplete = useCallback(() => {
-    setAct("war");
   }, []);
+
+  const handleLaunchComplete = useCallback(() => setAct("war"), []);
 
   const handleWarComplete = useCallback(() => {
     stopSiren();
