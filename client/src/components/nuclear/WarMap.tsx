@@ -11,19 +11,40 @@ const graticule = geoGraticule().step([20, 20])();
 
 interface Props { onComplete: () => void; }
 
-// Silo origins [lng, lat]
-const SILOS: [number, number][] = [
-  [-110, 48], [40, 64], [62, 55], [93, 40], [-1, 52], [3, 47],
-];
+// Launch origins by country [lng, lat] — ICBM silos, SSBN submarine positions, IRBM sites
+const LAUNCH_SITES: Record<string, [number, number][]> = {
+  USA: [
+    [-110, 47],   // Malmstrom AFB, Montana (Minuteman)
+    [-104, 41],   // F.E. Warren AFB, Wyoming
+    [-101, 48],   // Minot AFB, North Dakota
+    [-70, 38],    // Atlantic SSBN patrol
+    [-160, 35],   // Pacific SSBN patrol
+  ],
+  USSR: [
+    [59, 51],     // Dombarovsky ICBM field
+    [60, 53],     // Kartaly ICBM field
+    [33, 69],     // Murmansk (Northern Fleet SSBN)
+    [158, 53],    // Petropavlovsk-Kamchatsky (Pacific Fleet SSBN)
+    [40, 62],     // Plesetsk Cosmodrome
+    [37, 56],     // Central Russia mobile launchers
+  ],
+  UK: [
+    [-6, 56],     // Holy Loch SSBN base, Scotland
+    [-20, 52],    // Atlantic SSBN patrol
+  ],
+  FRANCE: [
+    [-5, 48],     // Île Longue SSBN base, Brittany
+    [5, 44],      // Plateau d'Albion (S3 IRBM silos)
+  ],
+  CHINA: [
+    [100, 28],    // Xichang launch center
+    [92, 41],     // Lop Nur area
+  ],
+};
 
-function pickSilo(targetLng: number): [number, number] {
-  let best = SILOS[0];
-  let bestDist = 0;
-  for (const s of SILOS) {
-    const d = Math.abs(s[0] - targetLng);
-    if (d > bestDist) { bestDist = d; best = s; }
-  }
-  return best;
+function pickLaunchSite(origin: string): [number, number] {
+  const sites = LAUNCH_SITES[origin] || LAUNCH_SITES.USA;
+  return sites[Math.floor(Math.random() * sites.length)];
 }
 
 interface ActiveMissile {
@@ -59,15 +80,18 @@ export function WarMap({ onComplete }: Props) {
   const launchStrike = useCallback((strike: Strike) => {
     const proj = projRef.current;
     if (!proj) return;
-    const silo = pickSilo(strike.lng);
-    const origin = proj(silo);
+    const launchSite = pickLaunchSite(strike.origin ?? "USA");
+    const originPt = proj(launchSite);
     const target = proj([strike.lng, strike.lat]);
-    if (!origin || !target) return;
+    if (!originPt || !target) return;
+
+    // Flight times: realistic ICBM = ~30min, but scaled for cinema
+    // Phase 1: 25s (dramatic, watch the arc), Phase 2: 15s, Phase 3: 6s
+    const flightTime = strike.phase === 1 ? 25000 : strike.phase === 2 ? 15000 : 6000;
 
     missilesRef.current.push({
-      id: strike.id, ox: origin[0], oy: origin[1], tx: target[0], ty: target[1],
-      startTime: Date.now(),
-      flightTime: strike.phase === 1 ? 3000 : strike.phase === 2 ? 2000 : 800,
+      id: strike.id, ox: originPt[0], oy: originPt[1], tx: target[0], ty: target[1],
+      startTime: Date.now(), flightTime,
       impacted: false, strike, trail: [],
     });
     setMissilesLaunched((p) => p + 1);
@@ -103,10 +127,12 @@ export function WarMap({ onComplete }: Props) {
       for (const strike of STRIKES) {
         if (cancelled) return;
         launchStrike(strike);
-        const delay = strike.phase === 1 ? 1200 : strike.phase === 2 ? 350 : 60 + Math.random() * 40;
+        // Delays: Phase 1 = 3s between (dramatic), Phase 2 = 800ms, Phase 3 = 200ms
+        const delay = strike.phase === 1 ? 3000 : strike.phase === 2 ? 800 : 150 + Math.random() * 100;
         await sleep(delay);
       }
-      await sleep(3500);
+      // Wait for last missiles to land
+      await sleep(8000);
       if (!cancelled && !doneRef.current) { doneRef.current = true; onComplete(); }
     }
     runStrikes();
@@ -194,10 +220,11 @@ export function WarMap({ onComplete }: Props) {
           }
         }
 
-        // Initial flash (big, bright)
-        if (age < 0.5) {
-          const flashAlpha = 1.0 * (1 - age / 0.5);
-          const flashSize = 8 + (imp.yieldKt / 100);
+        // Initial flash — size proportional to yield (100kt=small, 4000kt=massive)
+        const yieldScale = Math.sqrt(imp.yieldKt / 100); // sqrt for realistic scaling
+        if (age < 0.6) {
+          const flashAlpha = 1.0 * (1 - age / 0.6);
+          const flashSize = 6 + yieldScale * 4;
           ctx!.fillStyle = `rgba(255,255,150,${flashAlpha})`;
           ctx!.beginPath(); ctx!.arc(imp.x, imp.y, flashSize, 0, Math.PI * 2); ctx!.fill();
           // Outer glow
@@ -205,12 +232,12 @@ export function WarMap({ onComplete }: Props) {
           ctx!.beginPath(); ctx!.arc(imp.x, imp.y, flashSize * 2, 0, Math.PI * 2); ctx!.fill();
         }
 
-        // Mushroom cloud glow (vertical plume rising)
-        if (age > 0.3 && age < 5) {
+        // Mushroom cloud glow — scaled to yield
+        if (age > 0.3 && age < 6) {
           const cloudAge = age - 0.3;
-          const cloudAlpha = 0.25 * Math.max(0, 1 - cloudAge / 4.7);
-          const cloudHeight = Math.min(40, cloudAge * 20);
-          const cloudWidth = 4 + cloudAge * 2;
+          const cloudAlpha = 0.3 * Math.max(0, 1 - cloudAge / 5.7);
+          const cloudHeight = Math.min(30 + yieldScale * 10, cloudAge * 15 * yieldScale);
+          const cloudWidth = 3 + cloudAge * yieldScale;
 
           // Stem
           const grad = ctx!.createLinearGradient(imp.x, imp.y, imp.x, imp.y - cloudHeight);
