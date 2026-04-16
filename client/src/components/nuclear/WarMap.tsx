@@ -44,6 +44,8 @@ export function WarMap({ onComplete }: Props) {
   const [strikeLog, setStrikeLog] = useState<Strike[]>([]);
   const [totalCasualties, setTotalCasualties] = useState(0);
   const [missilesLaunched, setMissilesLaunched] = useState(0);
+  const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(1);
   const missilesRef = useRef<ActiveMissile[]>([]);
   const impactsRef = useRef<Impact[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
@@ -51,6 +53,9 @@ export function WarMap({ onComplete }: Props) {
   const projRef = useRef<ReturnType<typeof geoNaturalEarth1> | null>(null);
   const shakeRef = useRef({ x: 0, y: 0, until: 0 });
   const impactCountRef = useRef(0);
+
+  // Keep speedRef in sync
+  useEffect(() => { speedRef.current = speed; }, [speed]);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -64,8 +69,8 @@ export function WarMap({ onComplete }: Props) {
     const target = proj([strike.lng, strike.lat]);
     if (!originPt || !target) return;
 
-    // Balanced flight times: visible arcs but won't accumulate too many
-    const flightTime = strike.phase === 1 ? 12000 : strike.phase === 2 ? 8000 : 4000;
+    const baseTime = strike.phase === 1 ? 12000 : strike.phase === 2 ? 8000 : 4000;
+    const flightTime = baseTime / speedRef.current;
 
     missilesRef.current.push({
       id: strike.id, ox: originPt[0], oy: originPt[1], tx: target[0], ty: target[1],
@@ -120,11 +125,10 @@ export function WarMap({ onComplete }: Props) {
       for (const strike of STRIKES) {
         if (cancelled) return;
         launchStrike(strike);
-        // Phase 1: dramatic pauses, Phase 2: steady, Phase 3: rapid but not crazy
-        const delay = strike.phase === 1 ? 2500 : strike.phase === 2 ? 600 : 200;
-        await sleep(delay);
+        const baseDelay = strike.phase === 1 ? 2500 : strike.phase === 2 ? 600 : 200;
+        await sleep(baseDelay / speedRef.current);
       }
-      await sleep(6000);
+      await sleep(6000 / speedRef.current);
       if (!cancelled && !doneRef.current) { doneRef.current = true; onComplete(); }
     }
     runStrikes();
@@ -279,7 +283,21 @@ export function WarMap({ onComplete }: Props) {
         <span className="text-red-500 font-mono text-[9px] sm:text-xs tracking-widest animate-pulse">
           ⚠ NORAD STRATEGIC COMMAND — GLOBAL THERMONUCLEAR WAR
         </span>
-        <span className="text-red-400/60 font-mono text-[8px] sm:text-[10px]">DEFCON 1</span>
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4].map((s) => (
+            <button
+              key={s}
+              onClick={() => setSpeed(s)}
+              className={`font-mono text-[8px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded cursor-pointer transition-all
+                ${speed === s
+                  ? "bg-red-500/30 text-red-400 border border-red-500/50"
+                  : "text-red-500/30 border border-red-500/15 hover:text-red-400/60 hover:border-red-500/30"
+                }`}
+            >
+              x{s}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">

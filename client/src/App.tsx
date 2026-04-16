@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState } from "react";
 import { useAppStore } from "./stores/appStore";
 import { useEasterEggStore } from "./stores/easterEggStore";
 import { useKonamiCode } from "./hooks/useKonamiCode";
+import { TerminalIntro } from "./components/terminal/TerminalIntro";
 import { TerminalBoot } from "./components/terminal/TerminalBoot";
 import { ParticleDissolve } from "./components/transition/ParticleDissolve";
 import { TerminalOverlay } from "./components/terminal/TerminalOverlay";
@@ -113,6 +114,10 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [eggFound, nuclearTriggered, nuclearDone, setNuclearTriggered]);
+
+  if (phase === "intro") {
+    return <TerminalIntro onStart={() => setPhase("boot")} />;
+  }
 
   if (phase === "boot") {
     return <TerminalBoot onComplete={() => setPhase("transition")} />;

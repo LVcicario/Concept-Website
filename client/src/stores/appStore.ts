@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type Phase = "boot" | "transition" | "site";
+type Phase = "intro" | "boot" | "transition" | "site";
 
 interface AppState {
   phase: Phase;
@@ -13,7 +13,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  phase: "boot",
+  phase: "intro",
   terminalOverlayOpen: false,
   muted: false,
   setPhase: (phase) => set({ phase }),
