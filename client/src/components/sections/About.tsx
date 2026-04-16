@@ -67,8 +67,8 @@ export function About() {
                   <div className="text-site-text">architecture to market. TypeScript, Node.js, Supabase.</div>
                   <div className="h-[1.5em]" />
                   <div className="text-terminal-amber">## Previously</div>
-                  <div className="text-site-text">AI & automation at <span className="text-terminal-cyan font-bold">ABB</span> — one of the world's largest</div>
-                  <div className="text-site-text">industrial technology groups. Cross-functional, data-driven.</div>
+                  <div className="text-site-text">AI Expert at <span className="text-terminal-cyan font-bold">ABB</span> — edge AI on Raspberry Pi,</div>
+                  <div className="text-site-text">custom AI modules for a $30B industrial tech group. R&D under NDA.</div>
                   <div className="h-[1.5em]" />
                   <div className="text-terminal-amber">## The Plot Twist</div>
                   <div className="text-site-text">Before tech, I directed a <span className="text-terminal-amber font-bold">110-person retail operation</span>.</div>
@@ -82,6 +82,25 @@ export function About() {
           </div>
 
           <div className="space-y-4">
+            {/* Clearance Level — FIRST, most impressive */}
+            <div ref={setCard} className="bg-site-surface border border-terminal-amber/30 rounded-lg p-4 shadow-[0_0_15px_rgba(255,184,0,0.05)]">
+              <div className="text-terminal-amber text-[10px] font-mono uppercase tracking-wider mb-3 font-bold">☆ Clearance Level</div>
+              <p className="text-site-text text-xs font-mono leading-relaxed">
+                Member of <span className="text-terminal-amber font-bold">CSI</span> — Cercle de Stratégies et d'Influences.
+              </p>
+              <p className="text-site-text-dim text-[11px] font-mono leading-relaxed mt-1">
+                Restricted French strategic think tank — senior executives, political figures, institutional leaders.
+              </p>
+              <div className="mt-3 pt-3 border-t border-terminal-amber/15">
+                <p className="text-site-text text-xs font-mono leading-relaxed">
+                  Official credential from the <span className="text-terminal-amber font-bold">Cabinet du Président de la République</span>.
+                </p>
+                <p className="text-site-text-dim text-[10px] font-mono mt-1">
+                  Participated in restricted institutional exchanges at the highest level of the French state.
+                </p>
+              </div>
+            </div>
+
             <div ref={setCard} className="bg-site-surface border border-site-border rounded-lg p-4">
               <div className="text-terminal-gray text-[10px] font-mono uppercase tracking-wider mb-3">System Status</div>
               {[
@@ -95,11 +114,6 @@ export function About() {
                   <span className={`${item.color} text-xs font-mono`}>{item.val}</span>
                 </div>
               ))}
-            </div>
-            <div ref={setCard} className="bg-site-surface border border-terminal-amber/20 rounded-lg p-4">
-              <div className="text-terminal-amber text-[10px] font-mono uppercase tracking-wider mb-3">Clearance Level</div>
-              <p className="text-site-text-dim text-xs font-mono leading-relaxed">Member of <span className="text-site-text">CSI</span> — restricted French strategic think tank.</p>
-              <p className="text-site-text-dim text-xs font-mono leading-relaxed mt-2">Official credential from the <span className="text-terminal-amber">Cabinet du President de la Republique</span>.</p>
             </div>
             <div ref={setCard} className="bg-site-surface border border-site-border rounded-lg p-4">
               <div className="text-terminal-gray text-[10px] font-mono uppercase tracking-wider mb-3">Languages</div>

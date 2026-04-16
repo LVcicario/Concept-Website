@@ -85,10 +85,10 @@ export function Hero() {
 
         <div className="grid grid-cols-2 sm:flex sm:justify-center gap-4 sm:gap-10 mb-8 sm:mb-10">
           {[
-            { value: "5+", label: "Years Coding" },
-            { value: "110", label: "People Led" },
-            { value: "1", label: "AI SaaS Built" },
-            { value: "ABB", label: "Global Corp XP" },
+            { value: "5+", label: "Years Building" },
+            { value: "110", label: "People Managed" },
+            { value: "AI", label: "SaaS Shipped" },
+            { value: "ABB", label: "Fortune 500" },
           ].map((stat) => (
             <div key={stat.label} className="hero-stat text-center">
               <div className="text-terminal-green phosphor-glow text-xl sm:text-2xl md:text-3xl font-bold font-mono">
@@ -115,6 +115,22 @@ export function Hero() {
                        font-mono text-xs sm:text-sm rounded hover:border-terminal-green/50 hover:text-terminal-green transition-all duration-300 text-center"
           >
             <span className="text-terminal-gray group-hover:text-terminal-green/60">$</span> contact --init
+          </a>
+        </div>
+
+        {/* Quick links — visible immediately */}
+        <div className="mt-6 flex items-center justify-center gap-4 sm:gap-6">
+          <a href="https://www.linkedin.com/in/luca-vicario" target="_blank" rel="noopener noreferrer"
+             className="text-terminal-gray/50 font-mono text-[10px] sm:text-xs hover:text-terminal-cyan transition-colors">
+            [LinkedIn]
+          </a>
+          <a href="https://github.com/LVcicario" target="_blank" rel="noopener noreferrer"
+             className="text-terminal-gray/50 font-mono text-[10px] sm:text-xs hover:text-terminal-green transition-colors">
+            [GitHub]
+          </a>
+          <a href="mailto:lucavicario1904@gmail.com"
+             className="text-terminal-gray/50 font-mono text-[10px] sm:text-xs hover:text-terminal-amber transition-colors">
+            [Email]
           </a>
         </div>
       </div>
