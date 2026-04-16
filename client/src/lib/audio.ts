@@ -407,6 +407,118 @@ export function playCRTOn() {
 }
 
 /* ═══════════════════════════════════════════
+   UI SOUNDS — Section transitions, scrolling
+   ═══════════════════════════════════════════ */
+
+/** Section enter — subtle digital "scan" beep */
+export function playSectionEnter() {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+
+  // Short ascending sweep
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(400, now);
+  osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.04, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.15);
+
+  // Tiny click
+  const clickLen = 0.008;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * clickLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 8);
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const cGain = ctx.createGain();
+  cGain.gain.value = 0.03;
+  src.connect(cGain).connect(ctx.destination);
+  src.start(now);
+}
+
+/** Hack/glitch sound — for Soviet transition (data corruption noise) */
+export function playHackGlitch() {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+
+  // Distorted digital noise — rapid frequency jumps
+  for (let i = 0; i < 6; i++) {
+    const t = now + i * 0.12;
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.value = 200 + Math.random() * 2000;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.03, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 500 + Math.random() * 1500;
+    bp.Q.value = 5;
+
+    osc.connect(bp).connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  }
+
+  // Static crackle underneath
+  const staticLen = 0.8;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * staticLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const t = i / d.length;
+    d[i] = (Math.random() * 2 - 1) * 0.5 * (Math.random() > 0.6 ? 1 : 0.1) * (1 - t * 0.5);
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 2000;
+  const sGain = ctx.createGain();
+  sGain.gain.setValueAtTime(0.04, now);
+  sGain.gain.linearRampToValueAtTime(0.01, now + staticLen);
+  src.connect(lp).connect(sGain).connect(ctx.destination);
+  src.start(now);
+}
+
+/** Stamp impact — heavy thud for classification stamps */
+export function playStampHit() {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(120, now);
+  osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.1, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.25);
+
+  // Paper slap noise
+  const len = 0.03;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4);
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const nGain = ctx.createGain();
+  nGain.gain.value = 0.08;
+  src.connect(nGain).connect(ctx.destination);
+  src.start(now);
+}
+
+/* ═══════════════════════════════════════════
    SITE AMBIENT — Dark cinematic synth pad
    ═══════════════════════════════════════════ */
 

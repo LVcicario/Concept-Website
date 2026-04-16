@@ -125,7 +125,7 @@ function App() {
   return (
     <>
       {/* Nuclear sequence overlay */}
-      {nuclearTriggered && !nuclearDone && <NuclearSequence />}
+      {nuclearTriggered && <NuclearSequence />}
 
       {/* Konami glitch overlay */}
       {konamiGlitch && (

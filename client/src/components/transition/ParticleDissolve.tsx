@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { playHackGlitch, playStampHit, resumeAudio } from "../../lib/audio";
 
 interface Props {
   onComplete: () => void;
@@ -17,9 +18,15 @@ export function ParticleDissolve({ onComplete }: Props) {
   const [phase, setPhase] = useState<"document" | "stamp" | "vhs" | "static" | "poweroff" | "black">("document");
 
   useEffect(() => {
+    resumeAudio();
+    // Hack glitch sound when document appears
+    const t0 = setTimeout(() => playHackGlitch(), 200);
     const timers = [
-      setTimeout(() => setPhase("stamp"), 1200),
-      setTimeout(() => setPhase("vhs"), 3000),
+      t0,
+      setTimeout(() => { setPhase("stamp"); playStampHit(); }, 1200),
+      setTimeout(() => playStampHit(), 1800), // second stamp
+      setTimeout(() => playStampHit(), 2200), // seal stamp
+      setTimeout(() => { setPhase("vhs"); playHackGlitch(); }, 3000),
       setTimeout(() => setPhase("static"), 4800),
       setTimeout(() => setPhase("poweroff"), 5800),
       setTimeout(() => setPhase("black"), 6400),

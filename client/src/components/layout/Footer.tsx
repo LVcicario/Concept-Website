@@ -4,7 +4,6 @@ import { useEasterEggStore } from "../../stores/easterEggStore";
 export function Footer() {
   const setNuclearTriggered = useEasterEggStore((s) => s.setNuclearTriggered);
   const nuclearTriggered = useEasterEggStore((s) => s.nuclearTriggered);
-  const nuclearDone = useEasterEggStore((s) => s.nuclearDone);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [keyTurned, setKeyTurned] = useState(false);
 
@@ -37,7 +36,7 @@ export function Footer() {
       {/* ═══════════════════════════════════════════
           NUCLEAR LAUNCH CONSOLE
           ═══════════════════════════════════════════ */}
-      {!nuclearTriggered && !nuclearDone && (
+      {!nuclearTriggered && (
         <div className="border-t border-red-900/20">
           <div className="flex flex-col items-center py-16 sm:py-20 px-4">
 
