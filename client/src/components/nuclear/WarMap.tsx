@@ -1,61 +1,51 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { geoNaturalEarth1, geoPath, geoGraticule } from "d3-geo";
+import { feature } from "topojson-client";
+import type { Topology } from "topojson-specification";
+import worldTopo from "world-atlas/land-50m.json";
 import { STRIKES, type Strike } from "./warData";
-import { WORLD_OUTLINES } from "./worldMap";
 import { playImpact, playRadarBeep } from "./useNuclearAudio";
+
+// Extract land features from TopoJSON
+const worldGeo = feature(worldTopo as unknown as Topology, (worldTopo as any).objects.land);
+const graticule = geoGraticule().step([20, 20])();
 
 interface Props {
   onComplete: () => void;
 }
 
-// Silo origins (lat/lng) — missiles originate from these
-const SILO_ORIGINS: [number, number][] = [
-  [48.5, -110],   // Montana, USA
-  [64, 40],       // Plesetsk, USSR
-  [55, 62],       // Urals, USSR
-  [40, 93],       // Gansu, China
-  [52, -1],       // UK
-  [47, 3],        // France
-];
-
-// Convert lat/lng to Mercator x,y (0-1)
-function toXY(lat: number, lng: number): [number, number] {
-  return [(lng + 180) / 360, (90 - lat) / 180];
-}
-
-// Pick the nearest silo to approximate realistic trajectory
-function pickSilo(_targetLat: number, targetLng: number): [number, number] {
-  let best = SILO_ORIGINS[0];
-  let bestDist = Infinity;
-  for (const s of SILO_ORIGINS) {
-    // Pick silos from the OPPOSITE side (enemies shoot at you)
-    const d = Math.abs(s[1] - targetLng);
-    // Prefer silos far from target (ICBMs cross the globe)
-    if (d > 40 && d < bestDist + 100) {
-      bestDist = d;
-      best = s;
-    }
-  }
-  // Fallback: just pick a random one far away
-  if (bestDist === Infinity) {
-    best = SILO_ORIGINS[Math.floor(Math.random() * SILO_ORIGINS.length)];
-  }
-  return best;
-}
-
 interface ActiveMissile {
   id: number;
-  ox: number; oy: number; // origin
-  tx: number; ty: number; // target
+  ox: number; oy: number;
+  tx: number; ty: number;
   startTime: number;
-  flightTime: number; // ms
+  flightTime: number;
   impacted: boolean;
   strike: Strike;
 }
 
 interface Impact {
-  x: number;
-  y: number;
-  time: number;
+  x: number; y: number; time: number;
+}
+
+// Silo origins
+const SILOS: [number, number][] = [
+  [-110, 48],  // Montana, USA
+  [40, 64],    // Plesetsk, USSR
+  [62, 55],    // Urals, USSR
+  [93, 40],    // China
+  [-1, 52],    // UK
+  [3, 47],     // France
+];
+
+function pickSilo(targetLng: number): [number, number] {
+  let best = SILOS[0];
+  let bestDist = 0;
+  for (const s of SILOS) {
+    const d = Math.abs(s[0] - targetLng);
+    if (d > bestDist) { bestDist = d; best = s; }
+  }
+  return best;
 }
 
 export function WarMap({ onComplete }: Props) {
@@ -67,25 +57,27 @@ export function WarMap({ onComplete }: Props) {
   const impactsRef = useRef<Impact[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
-  const startTimeRef = useRef(Date.now());
+  const projectionRef = useRef<ReturnType<typeof geoNaturalEarth1> | null>(null);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [strikeLog]);
 
   const launchStrike = useCallback((strike: Strike) => {
-    const silo = pickSilo(strike.lat, strike.lng);
-    const [ox, oy] = toXY(silo[0], silo[1]);
-    const [tx, ty] = toXY(strike.lat, strike.lng);
+    const proj = projectionRef.current;
+    if (!proj) return;
 
-    const flightTime =
-      strike.phase === 1 ? 3000 :
-      strike.phase === 2 ? 2000 :
-      800;
+    const silo = pickSilo(strike.lng);
+    const origin = proj(silo);
+    const target = proj([strike.lng, strike.lat]);
+    if (!origin || !target) return;
+
+    const flightTime = strike.phase === 1 ? 3000 : strike.phase === 2 ? 2000 : 800;
 
     missilesRef.current.push({
       id: strike.id,
-      ox, oy, tx, ty,
+      ox: origin[0], oy: origin[1],
+      tx: target[0], ty: target[1],
       startTime: Date.now(),
       flightTime,
       impacted: false,
@@ -95,7 +87,6 @@ export function WarMap({ onComplete }: Props) {
     setMissilesLaunched((p) => p + 1);
   }, []);
 
-  // Handle impacts in animation loop
   const checkImpacts = useCallback(() => {
     const now = Date.now();
     for (const m of missilesRef.current) {
@@ -114,19 +105,16 @@ export function WarMap({ onComplete }: Props) {
   useEffect(() => {
     let cancelled = false;
     const radarInterval = setInterval(() => playRadarBeep(), 2000);
-    startTimeRef.current = Date.now();
 
     async function runStrikes() {
+      // Wait a bit for projection to init
+      await sleep(500);
       for (const strike of STRIKES) {
         if (cancelled) return;
         launchStrike(strike);
-        const delay =
-          strike.phase === 1 ? 1200 :
-          strike.phase === 2 ? 350 :
-          60 + Math.random() * 40;
+        const delay = strike.phase === 1 ? 1200 : strike.phase === 2 ? 350 : 60 + Math.random() * 40;
         await sleep(delay);
       }
-      // Wait for last missiles to land
       await sleep(3500);
       if (!cancelled && !doneRef.current) {
         doneRef.current = true;
@@ -138,7 +126,7 @@ export function WarMap({ onComplete }: Props) {
     return () => { cancelled = true; clearInterval(radarInterval); };
   }, [launchStrike, onComplete]);
 
-  // Canvas render loop
+  // Canvas render
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -153,128 +141,121 @@ export function WarMap({ onComplete }: Props) {
       canvas!.width = rect.width * dpr;
       canvas!.height = rect.height * dpr;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Setup projection to fit canvas
+      const w = rect.width;
+      const h = rect.height;
+      const projection = geoNaturalEarth1()
+        .fitSize([w - 20, h - 20], worldGeo)
+        .translate([w / 2, h / 2]);
+      projectionRef.current = projection;
     }
+
     resize();
     window.addEventListener("resize", resize);
 
     function draw() {
+      const proj = projectionRef.current;
+      if (!proj) { animId = requestAnimationFrame(draw); return; }
+
       const w = canvas!.width / Math.min(window.devicePixelRatio, 2);
       const h = canvas!.height / Math.min(window.devicePixelRatio, 2);
       const now = Date.now();
+      const pathGen = geoPath().projection(proj).context(ctx!);
 
-      // Check for new impacts
       checkImpacts();
 
       // Clear
       ctx!.fillStyle = "#000";
       ctx!.fillRect(0, 0, w, h);
 
-      // Grid
+      // Graticule (grid lines)
+      ctx!.beginPath();
+      pathGen(graticule);
       ctx!.strokeStyle = "rgba(0,255,65,0.04)";
       ctx!.lineWidth = 0.5;
-      for (let i = 0; i <= 18; i++) {
-        const y = (i / 18) * h;
-        ctx!.beginPath(); ctx!.moveTo(0, y); ctx!.lineTo(w, y); ctx!.stroke();
-      }
-      for (let i = 0; i <= 36; i++) {
-        const x = (i / 36) * w;
-        ctx!.beginPath(); ctx!.moveTo(x, 0); ctx!.lineTo(x, h); ctx!.stroke();
-      }
+      ctx!.stroke();
 
-      // World map outlines
-      ctx!.strokeStyle = "rgba(0,255,65,0.18)";
+      // World outline — the real map
+      ctx!.beginPath();
+      pathGen(worldGeo);
+      ctx!.strokeStyle = "rgba(0,255,65,0.2)";
       ctx!.lineWidth = 0.8;
-      for (const outline of WORLD_OUTLINES) {
-        if (outline.length < 2) continue;
-        ctx!.beginPath();
-        for (let i = 0; i < outline.length; i++) {
-          const px = outline[i][0] * w;
-          const py = outline[i][1] * h;
-          if (i === 0) ctx!.moveTo(px, py);
-          else ctx!.lineTo(px, py);
-        }
-        ctx!.closePath();
-        ctx!.stroke();
-      }
+      ctx!.stroke();
+      // Subtle fill
+      ctx!.fillStyle = "rgba(0,255,65,0.02)";
+      ctx!.fill();
 
-      // Impacts — permanent red dots with expanding shockwave
+      // Impacts
       for (const imp of impactsRef.current) {
         const age = (now - imp.time) / 1000;
-        const px = imp.x * w;
-        const py = imp.y * h;
 
-        // Shockwave ring (fades over 3 seconds)
+        // Shockwave
         if (age < 3) {
-          const radius = age * 15;
-          const alpha = Math.max(0, 0.4 * (1 - age / 3));
-          ctx!.strokeStyle = `rgba(255,50,50,${alpha})`;
+          const radius = age * 12;
+          ctx!.strokeStyle = `rgba(255,50,50,${0.4 * (1 - age / 3)})`;
           ctx!.lineWidth = 1.5;
           ctx!.beginPath();
-          ctx!.arc(px, py, radius, 0, Math.PI * 2);
+          ctx!.arc(imp.x, imp.y, radius, 0, Math.PI * 2);
           ctx!.stroke();
         }
 
-        // Flash (first 0.3s)
+        // Flash
         if (age < 0.3) {
-          const flashAlpha = 0.8 * (1 - age / 0.3);
-          ctx!.fillStyle = `rgba(255,255,200,${flashAlpha})`;
+          ctx!.fillStyle = `rgba(255,255,200,${0.8 * (1 - age / 0.3)})`;
           ctx!.beginPath();
-          ctx!.arc(px, py, 6, 0, Math.PI * 2);
+          ctx!.arc(imp.x, imp.y, 5, 0, Math.PI * 2);
           ctx!.fill();
         }
 
-        // Permanent dot (pulsing)
+        // Permanent dot
         const pulse = 0.5 + 0.5 * Math.sin(age * 3);
         ctx!.fillStyle = `rgba(255,50,50,${0.5 + pulse * 0.3})`;
         ctx!.beginPath();
-        ctx!.arc(px, py, 2 + pulse, 0, Math.PI * 2);
+        ctx!.arc(imp.x, imp.y, 2 + pulse, 0, Math.PI * 2);
         ctx!.fill();
 
         // Glow
-        ctx!.fillStyle = `rgba(255,80,50,${0.08 + pulse * 0.04})`;
+        ctx!.fillStyle = `rgba(255,80,50,${0.06 + pulse * 0.03})`;
         ctx!.beginPath();
-        ctx!.arc(px, py, 8, 0, Math.PI * 2);
+        ctx!.arc(imp.x, imp.y, 7, 0, Math.PI * 2);
         ctx!.fill();
       }
 
-      // Active missile arcs
+      // Missiles
       for (const m of missilesRef.current) {
         if (m.impacted) continue;
-        const elapsed = now - m.startTime;
-        const progress = Math.min(1, elapsed / m.flightTime);
+        const progress = Math.min(1, (now - m.startTime) / m.flightTime);
 
-        // Draw trail
-        const trailPoints = 30;
+        // Trail
+        const steps = 25;
         ctx!.strokeStyle = "rgba(0,255,65,0.5)";
         ctx!.lineWidth = 1;
         ctx!.beginPath();
-        for (let j = 0; j <= trailPoints * progress; j++) {
-          const t = j / trailPoints;
+        for (let j = 0; j <= steps * progress; j++) {
+          const t = j / steps;
           const x = m.ox + (m.tx - m.ox) * t;
-          const y = m.oy + (m.ty - m.oy) * t - Math.sin(t * Math.PI) * 0.06;
-          if (j === 0) ctx!.moveTo(x * w, y * h);
-          else ctx!.lineTo(x * w, y * h);
+          const y = m.oy + (m.ty - m.oy) * t - Math.sin(t * Math.PI) * 30;
+          if (j === 0) ctx!.moveTo(x, y);
+          else ctx!.lineTo(x, y);
         }
         ctx!.stroke();
 
-        // Missile head (bright green dot)
-        const headT = progress;
-        const hx = m.ox + (m.tx - m.ox) * headT;
-        const hy = m.oy + (m.ty - m.oy) * headT - Math.sin(headT * Math.PI) * 0.06;
+        // Head
+        const hx = m.ox + (m.tx - m.ox) * progress;
+        const hy = m.oy + (m.ty - m.oy) * progress - Math.sin(progress * Math.PI) * 30;
         ctx!.fillStyle = "#00ff41";
         ctx!.beginPath();
-        ctx!.arc(hx * w, hy * h, 2.5, 0, Math.PI * 2);
+        ctx!.arc(hx, hy, 2, 0, Math.PI * 2);
         ctx!.fill();
-
-        // Head glow
-        ctx!.fillStyle = "rgba(0,255,65,0.2)";
+        ctx!.fillStyle = "rgba(0,255,65,0.15)";
         ctx!.beginPath();
-        ctx!.arc(hx * w, hy * h, 6, 0, Math.PI * 2);
+        ctx!.arc(hx, hy, 5, 0, Math.PI * 2);
         ctx!.fill();
       }
 
-      // Clean up old missiles (keep impacts forever)
-      missilesRef.current = missilesRef.current.filter((m) => !m.impacted || (now - m.startTime) < m.flightTime + 1000);
+      // Cleanup
+      missilesRef.current = missilesRef.current.filter((m) => !m.impacted || (now - m.startTime) < m.flightTime + 500);
 
       animId = requestAnimationFrame(draw);
     }
@@ -290,19 +271,15 @@ export function WarMap({ onComplete }: Props) {
         <span className="text-red-500 font-mono text-[9px] sm:text-xs tracking-widest animate-pulse">
           ⚠ NORAD STRATEGIC COMMAND — GLOBAL THERMONUCLEAR WAR
         </span>
-        <span className="text-red-400/60 font-mono text-[8px] sm:text-[10px]">
-          DEFCON 1
-        </span>
+        <span className="text-red-400/60 font-mono text-[8px] sm:text-[10px]">DEFCON 1</span>
       </div>
 
-      {/* Main content */}
+      {/* Map + Log */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-        {/* Map */}
         <div className="flex-1 relative min-h-0">
           <canvas ref={canvasRef} className="w-full h-full" />
         </div>
 
-        {/* Strike log */}
         <div
           ref={logRef}
           className="w-full md:w-64 lg:w-72 h-32 md:h-auto overflow-y-auto border-t md:border-t-0 md:border-l border-red-500/20 bg-black/90 p-2 sm:p-3 font-mono text-[8px] sm:text-[9px]"
@@ -312,31 +289,19 @@ export function WarMap({ onComplete }: Props) {
           </div>
           {strikeLog.slice(-30).map((s) => (
             <div key={s.id} className="mb-1.5 border-b border-red-500/10 pb-1">
-              <div className="text-red-400">
-                #{String(s.id).padStart(3, "0")} {s.city.toUpperCase()}
-              </div>
-              <div className="text-red-400/40">
-                {s.warhead} ({s.yieldKt}kt) — {s.country}
-              </div>
-              <div className="text-red-300/50">
-                ☢ {s.casualties.toLocaleString()}
-              </div>
+              <div className="text-red-400">#{String(s.id).padStart(3, "0")} {s.city.toUpperCase()}</div>
+              <div className="text-red-400/40">{s.warhead} ({s.yieldKt}kt) — {s.country}</div>
+              <div className="text-red-300/50">☢ {s.casualties.toLocaleString()}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Bottom bar */}
+      {/* Bottom */}
       <div className="px-3 sm:px-6 py-1.5 sm:py-2 border-t border-red-500/30 flex items-center justify-between flex-wrap gap-2 font-mono text-[8px] sm:text-[10px]">
-        <span className="text-red-400">
-          MISSILES: {missilesLaunched}/{STRIKES.length}
-        </span>
-        <span className="text-red-500 font-bold text-[9px] sm:text-xs">
-          CASUALTIES: {totalCasualties.toLocaleString()}
-        </span>
-        <span className="text-red-400/60">
-          IN FLIGHT: {missilesRef.current.filter((m) => !m.impacted).length}
-        </span>
+        <span className="text-red-400">MISSILES: {missilesLaunched}/{STRIKES.length}</span>
+        <span className="text-red-500 font-bold text-[9px] sm:text-xs">CASUALTIES: {totalCasualties.toLocaleString()}</span>
+        <span className="text-red-400/60">IN FLIGHT: {Math.max(0, missilesLaunched - strikeLog.length)}</span>
       </div>
     </div>
   );
