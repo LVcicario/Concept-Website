@@ -1,16 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { CRTEffect } from "./CRTEffect";
-import { resumeAudio, playCRTOn, startAmbientHum, stopAmbientHum, playKeystroke, playBootBeep } from "../../lib/audio";
+import { resumeAudio, playCRTOn, startAmbientHum, stopAmbientHum, playKeystroke, playBootBeep, playEnterKey } from "../../lib/audio";
 
 const RESPONSES: Record<string, string[]> = {
   help: [
-    "Available commands:",
-    "  ./start    — Initialize portfolio system",
-    "  whoami     — Display current user",
-    "  date       — Show current date",
-    "  clear      — Clear terminal",
+    "╔════════════════════════════════════════╗",
+    "║         AVAILABLE COMMANDS             ║",
+    "╠════════════════════════════════════════╣",
+    "║                                        ║",
+    "║  ./start   ← START THE PORTFOLIO       ║",
+    "║  whoami    — Display current user       ║",
+    "║  ls        — List files                 ║",
+    "║  date      — Show current date          ║",
+    "║  clear     — Clear terminal             ║",
+    "║                                        ║",
+    "╚════════════════════════════════════════╝",
     "",
-    "Hint: try running ./start",
+    "→ Type ./start to begin the experience.",
   ],
   whoami: ["visitor@unknown-terminal", "Access level: GUEST", "Clearance: PENDING"],
   date: [`${new Date().toISOString().split("T")[0]} — ${new Date().toLocaleTimeString()}`],
@@ -87,7 +93,8 @@ export function TerminalIntro({ onStart }: Props) {
     clearTimeout(hintTimerRef.current);
     hintTimerRef.current = window.setTimeout(() => setShowHint(true), 8000);
 
-    // Add input line
+    playEnterKey();
+
     const newLines: typeof lines = [{ text: `$ ${input}`, type: "input" }];
 
     // Check for start command
@@ -119,8 +126,8 @@ export function TerminalIntro({ onStart }: Props) {
       playKeystroke();
       RESPONSES[key].forEach((line) => newLines.push({ text: line, type: "output" }));
     } else if (cmd) {
-      newLines.push({ text: `Command not found: ${input}`, type: "error" });
-      newLines.push({ text: 'Type "help" for available commands.', type: "output" });
+      newLines.push({ text: `bash: ${input}: command not found`, type: "error" });
+      newLines.push({ text: "Try ./start to launch the portfolio, or help for commands.", type: "output" });
     }
 
     newLines.push({ text: "", type: "system" });
@@ -181,8 +188,8 @@ export function TerminalIntro({ onStart }: Props) {
         {/* Hint */}
         {showHint && (
           <div className="px-3 sm:px-6 pb-3 sm:pb-4">
-            <p className="text-terminal-gray/40 font-mono text-[9px] sm:text-[10px] animate-pulse">
-              hint: type <span className="text-terminal-green/60">./start</span> to initialize the system
+            <p className="text-terminal-green/60 font-mono text-xs sm:text-sm animate-pulse">
+              → type <span className="text-terminal-green font-bold">./start</span> and press Enter
             </p>
           </div>
         )}

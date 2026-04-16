@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useEasterEggStore } from "../../stores/easterEggStore";
+import { playNuclearAlert, resumeAudio } from "../../lib/audio";
 
 export function Footer() {
   const setNuclearTriggered = useEasterEggStore((s) => s.setNuclearTriggered);
@@ -10,6 +11,8 @@ export function Footer() {
   const handleLaunch = () => {
     setConfirmOpen(false);
     setKeyTurned(true);
+    playNuclearAlert();
+    setTimeout(() => playNuclearAlert(), 500);
     setTimeout(() => setNuclearTriggered(), 1500);
   };
 
@@ -79,7 +82,7 @@ export function Footer() {
 
                   {/* THE BUTTON */}
                   <button
-                    onClick={() => setConfirmOpen(true)}
+                    onClick={() => { resumeAudio(); playNuclearAlert(); setConfirmOpen(true); }}
                     disabled={keyTurned}
                     className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full border-2 flex flex-col items-center justify-center
                       transition-all duration-500 cursor-pointer

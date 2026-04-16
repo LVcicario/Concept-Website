@@ -407,8 +407,83 @@ export function playCRTOn() {
 }
 
 /* ═══════════════════════════════════════════
-   UI SOUNDS — Section transitions, scrolling
+   UI SOUNDS — Section transitions, interactions
    ═══════════════════════════════════════════ */
+
+/** Carriage return / Enter key sound */
+export function playEnterKey() {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+
+  // Mechanical return thunk
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(180, now);
+  osc.frequency.exponentialRampToValueAtTime(80, now + 0.06);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.1);
+
+  // Click
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.015, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 5);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const cg = ctx.createGain();
+  cg.gain.value = 0.1;
+  src.connect(cg).connect(ctx.destination);
+  src.start(now);
+}
+
+/** Nuclear alert klaxon — ominous warning when pressing the launch button */
+export function playNuclearAlert() {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+
+  // Three descending warning tones
+  [600, 500, 400].forEach((freq, i) => {
+    const t = now + i * 0.25;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = freq;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 800;
+    filter.Q.value = 2;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(filter).connect(gain).connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.25);
+  });
+
+  // Low rumble underneath
+  const rumble = ctx.createOscillator();
+  rumble.type = "sine";
+  rumble.frequency.value = 50;
+  const rGain = ctx.createGain();
+  rGain.gain.setValueAtTime(0.08, now);
+  rGain.gain.exponentialRampToValueAtTime(0.001, now + 1);
+  rumble.connect(rGain).connect(ctx.destination);
+  rumble.start(now); rumble.stop(now + 1.1);
+}
+
+/** Button click — subtle feedback */
+export function playButtonClick() {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = 600;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.06, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.06);
+}
 
 /** Section enter — subtle digital "scan" beep */
 export function playSectionEnter() {
@@ -421,11 +496,11 @@ export function playSectionEnter() {
   osc.frequency.setValueAtTime(400, now);
   osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.1, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+  gain.gain.setValueAtTime(0.15, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
-  osc.stop(now + 0.18);
+  osc.stop(now + 0.2);
 
   // Click
   const clickLen = 0.01;
